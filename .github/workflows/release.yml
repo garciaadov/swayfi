@@ -168,6 +168,18 @@ jobs:
           dylibbundler -of -b -d "$res/macos-libs" -p @executable_path/../Resources/macos-libs/ \
             -s "$(brew --prefix)/lib" "${targets[@]}" < /dev/null
 
+          # Tauri no empaqueta enlaces simbólicos, y algunos de Homebrew quedan rotos al
+          # sacarlos de su sitio: cada enlace se cambia por lo que apunta, o se borra
+          find "$res" -type l -print0 | while IFS= read -r -d '' link; do
+            if [ -e "$link" ]; then
+              cp -RL "$link" "$link.real"
+              rm "$link"
+              mv "$link.real" "$link"
+            else
+              rm "$link"
+            fi
+          done
+
           # LibreOffice y Calibre ya vienen firmados por sus autores: se copian sin tocar. Quedan
           # fuera de binaries/ porque Tauri no sabe copiar los enlaces simbólicos de un .app;
           # se meten en Swayfi.app después de compilar
