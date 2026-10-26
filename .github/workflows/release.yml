@@ -195,7 +195,12 @@ jobs:
         run: |
           set -euo pipefail
           trap 'echo "::error::Falló: $BASH_COMMAND (línea $LINENO)"' ERR
-          (cd src-tauri && npx --yes "$TAURI_CLI" build --bundles app)
+          # Si falla, las últimas líneas van a una anotación, que se lee sin iniciar sesión
+          if ! (cd src-tauri && npx --yes "$TAURI_CLI" build --bundles app) > build.log 2>&1; then
+            tail -n 40 build.log
+            echo "::error title=Compilación de macOS::$(tail -n 25 build.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            exit 1
+          fi
           app=src-tauri/target/release/bundle/macos/Swayfi.app
           cp -R "$RUNNER_TEMP"/apps/*.app "$app/Contents/Resources/"
           # Añadir archivos rompe la firma; se vuelve a firmar "ad hoc" solo Swayfi.app,
