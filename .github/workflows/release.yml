@@ -115,7 +115,7 @@ jobs:
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
           # Nombre fijo para que el botón del README apunte siempre a la última versión
-          releaseAssetNamePattern: Swayfi-Windows[setup][ext]
+          assetNamePattern: Swayfi-Windows[setup][ext]
 
   # Solo Apple Silicon. Sin cuenta de desarrollador de Apple la app se firma "ad hoc" y
   # cada usuario tiene que permitirla la primera vez (ver README)
@@ -178,6 +178,11 @@ jobs:
             hdiutil detach "/Volumes/$image"
           done
 
+          # Las descargas ya no hacen falta y el disco del ejecutor de macOS es justo
+          cd ..
+          rm -rf dl
+          df -h .
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,7 +191,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
-          releaseAssetNamePattern: Swayfi-macOS[ext]
+          assetNamePattern: Swayfi-macOS[ext]
 
   # En Linux los motores llegan como dependencias del paquete .deb (ver tauri.linux.conf.json)
   linux:
@@ -206,4 +211,4 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
-          releaseAssetNamePattern: Swayfi-Linux[ext]
+          assetNamePattern: Swayfi-Linux[ext]
