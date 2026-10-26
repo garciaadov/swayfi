@@ -31,6 +31,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Deja la orden que falle en las anotaciones, que se ven sin iniciar sesión
+          trap 'echo "::error::Falló: $BASH_COMMAND (línea $LINENO)"' ERR
           triple=x86_64-pc-windows-msvc
           bin="$PWD/src-tauri/binaries"
           res="$bin/windows"
@@ -126,6 +128,7 @@ jobs:
       - name: Descargar motores
         run: |
           set -euo pipefail
+          trap 'echo "::error::Falló: $BASH_COMMAND (línea $LINENO)"' ERR
           triple=aarch64-apple-darwin
           bin="$PWD/src-tauri/binaries"
           res="$bin/macos"
@@ -170,7 +173,7 @@ jobs:
           get calibre.dmg "https://github.com/kovidgoyal/calibre/releases/download/v$CALIBRE_VERSION/calibre-$CALIBRE_VERSION.dmg"
           for app in libreoffice:LibreOffice calibre:calibre; do
             image=${app%%:*}
-            yes | hdiutil attach -nobrowse -readonly -mountpoint "/Volumes/$image" "$image.dmg" > /dev/null
+            hdiutil attach -nobrowse -readonly -mountpoint "/Volumes/$image" "$image.dmg" > /dev/null
             cp -R "/Volumes/$image/${app#*:}.app" "$res/"
             hdiutil detach "/Volumes/$image"
           done
