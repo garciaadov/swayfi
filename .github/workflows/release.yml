@@ -168,13 +168,16 @@ jobs:
           dylibbundler -of -b -d "$res/macos-libs" -p @executable_path/../Resources/macos-libs/ \
             -s "$(brew --prefix)/lib" "${targets[@]}" < /dev/null
 
-          # LibreOffice y Calibre ya vienen firmados por sus autores: se copian sin tocar
+          # LibreOffice y Calibre ya vienen firmados por sus autores: se copian sin tocar. Quedan
+          # fuera de binaries/ porque Tauri no sabe copiar los enlaces simbólicos de un .app;
+          # se meten en Swayfi.app después de compilar
           get libreoffice.dmg "https://download.documentfoundation.org/libreoffice/stable/$LIBREOFFICE_VERSION/mac/aarch64/LibreOffice_${LIBREOFFICE_VERSION}_MacOS_aarch64.dmg"
           get calibre.dmg "https://github.com/kovidgoyal/calibre/releases/download/v$CALIBRE_VERSION/calibre-$CALIBRE_VERSION.dmg"
+          mkdir -p "$RUNNER_TEMP/apps"
           for app in libreoffice:LibreOffice calibre:calibre; do
             image=${app%%:*}
             hdiutil attach -nobrowse -readonly -mountpoint "/Volumes/$image" "$image.dmg" > /dev/null
-            cp -R "/Volumes/$image/${app#*:}.app" "$res/"
+            cp -R "/Volumes/$image/${app#*:}.app" "$RUNNER_TEMP/apps/"
             hdiutil detach "/Volumes/$image"
           done
 
@@ -191,8 +194,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          (cd src-tauri && npx --yes "$TAURI_CLI" build)
-          cp src-tauri/target/release/bundle/dmg/*.dmg Swayfi-macOS.dmg
+          trap 'echo "::error::Falló: $BASH_COMMAND (línea $LINENO)"' ERR
+          (cd src-tauri && npx --yes "$TAURI_CLI" build --bundles app)
+          app=src-tauri/target/release/bundle/macos/Swayfi.app
+          cp -R "$RUNNER_TEMP"/apps/*.app "$app/Contents/Resources/"
+          # Añadir archivos rompe la firma; se vuelve a firmar "ad hoc" solo Swayfi.app,
+          # sin tocar las firmas de LibreOffice y Calibre
+          codesign --force --sign - "$app"
+          mkdir dmg
+          mv "$app" dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Swayfi -srcfolder dmg -format UDZO -ov Swayfi-macOS.dmg
           tag="$GITHUB_REF_NAME"
           gh release view "$tag" > /dev/null 2>&1 ||
             gh release create "$tag" --draft --title "Swayfi $tag" --notes ""
