@@ -154,8 +154,8 @@ jobs:
           brew install vips mupdf-tools dylibbundler
           cp "$(brew --prefix)/bin/vips" "$bin/vips-$triple"
           cp "$(brew --prefix)/bin/mutool" "$bin/mutool-$triple"
-          mkdir -p "$res/vips/lib" "$res/imagemagick"
-          cp -R "$(brew --prefix vips)"/lib/vips-modules-* "$res/vips/lib/"
+          mkdir -p "$res/vips-home/lib" "$res/imagemagick"
+          cp -R "$(brew --prefix vips)"/lib/vips-modules-* "$res/vips-home/lib/"
           magick_modules=$(echo "$(brew --prefix imagemagick)"/lib/ImageMagick/modules-*)
           cp -R "$magick_modules/coders" "$magick_modules/filters" "$res/imagemagick/"
           cp -R "$(brew --prefix)/etc/ImageMagick-7" "$res/imagemagick/config"
@@ -163,7 +163,7 @@ jobs:
           targets=(-x "$bin/vips-$triple" -x "$bin/mutool-$triple")
           while IFS= read -r -d '' module; do
             targets+=(-x "$module")
-          done < <(find "$res/vips" "$res/imagemagick" \( -name '*.dylib' -o -name '*.so' \) -print0)
+          done < <(find "$res/vips-home" "$res/imagemagick" \( -name '*.dylib' -o -name '*.so' \) -print0)
           # Sin entrada: si le faltara una librería preguntaría por teclado y el trabajo se colgaría
           dylibbundler -of -b -d "$res/macos-libs" -p @executable_path/../Resources/macos-libs/ \
             -s "$(brew --prefix)/lib" "${targets[@]}" < /dev/null

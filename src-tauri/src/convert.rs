@@ -523,7 +523,7 @@ fn vips(app: &AppHandle) -> Result<Command, Failure> {
     let command = {
         let res = app.path().resource_dir().map_err(|_| Failure::Missing)?;
         command
-            .env("VIPSHOME", res.join("vips"))
+            .env("VIPSHOME", res.join("vips-home"))
             .env("MAGICK_CODER_MODULE_PATH", res.join("imagemagick/coders"))
             .env("MAGICK_CODER_FILTER_PATH", res.join("imagemagick/filters"))
             .env("MAGICK_CONFIGURE_PATH", res.join("imagemagick/config"))
