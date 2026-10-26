@@ -1,0 +1,12 @@
+{
+  "bundle": {
+    "targets": ["dmg"],
+    "resources": {
+      "binaries/macos/": "./"
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "-"
+    }
+  }
+}

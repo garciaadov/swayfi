@@ -1,0 +1,5 @@
+/src-tauri/target/
+/src-tauri/gen/
+# Los motores pesan cientos de MB: se descargan aparte (ver README)
+/src-tauri/binaries/*
+!/src-tauri/binaries/.gitkeep

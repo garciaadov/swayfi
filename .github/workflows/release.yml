@@ -1,0 +1,202 @@
+name: Instaladores
+
+# Al subir una etiqueta "v1.2.3" se compilan los instaladores y se crea un borrador de release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FFMPEG_BUILD: ffmpeg-n9.0-latest-win64-gpl-9.0
+  VIPS_VERSION: 8.18.7
+  PANDOC_VERSION: 3.12.1
+  SEVENZIP_VERSION: "2605"
+  MUPDF_VERSION: 1.28.5
+  LIBREOFFICE_VERSION: 26.2.6
+  CALIBRE_VERSION: 9.17.0
+  LESSMSI_VERSION: 2.12.9
+  TAURI_CLI: "@tauri-apps/cli@2.12.4"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Descargar motores
+        shell: bash
+        run: |
+          set -euo pipefail
+          triple=x86_64-pc-windows-msvc
+          bin="$PWD/src-tauri/binaries"
+          res="$bin/windows"
+          mkdir -p "$res" dl
+          cd dl
+          get() { curl -fsSL --retry 3 -o "$1" "$2"; }
+
+          get ffmpeg.zip "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$FFMPEG_BUILD.zip"
+          unzip -q ffmpeg.zip
+          cp "$FFMPEG_BUILD/bin/ffmpeg.exe" "$bin/ffmpeg-$triple.exe"
+
+          get vips.zip "https://github.com/libvips/build-win64-mxe/releases/download/v$VIPS_VERSION/vips-dev-x64-all-$VIPS_VERSION.zip"
+          unzip -q vips.zip
+          vips_bin=$(echo vips-dev-*/bin)
+          cp "$vips_bin/vips.exe" "$bin/vips-$triple.exe"
+          cp "$vips_bin"/*.dll "$res/"
+          cp -r "$vips_bin"/vips-modules-* "$res/"
+
+          get pandoc.zip "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-windows-x86_64.zip"
+          unzip -q pandoc.zip
+          cp "pandoc-$PANDOC_VERSION/pandoc.exe" "$bin/pandoc-$triple.exe"
+
+          # 7za no lee RAR: hace falta el 7z.exe completo con su 7z.dll, sacados del instalador
+          get 7zr.exe https://www.7-zip.org/a/7zr.exe
+          get 7z-setup.exe "https://github.com/ip7z/7zip/releases/download/${SEVENZIP_VERSION:0:2}.${SEVENZIP_VERSION:2}/7z$SEVENZIP_VERSION-x64.exe"
+          ./7zr.exe x -y -o7z 7z-setup.exe > /dev/null
+          cp 7z/7z.exe "$bin/7z-$triple.exe"
+          cp 7z/7z.dll "$res/"
+
+          get mupdf.zip "https://mupdf.com/downloads/archive/mupdf-$MUPDF_VERSION-windows.zip"
+          unzip -q mupdf.zip
+          cp "mupdf-$MUPDF_VERSION-windows/mutool.exe" "$bin/mutool-$triple.exe"
+
+          # LibreOffice y Calibre se extraen de sus MSI sin instalarlos
+          get lessmsi.zip "https://github.com/activescott/lessmsi/releases/download/v$LESSMSI_VERSION/lessmsi-v$LESSMSI_VERSION.zip"
+          unzip -q lessmsi.zip -d lessmsi
+          get libreoffice.msi "https://download.documentfoundation.org/libreoffice/stable/$LIBREOFFICE_VERSION/win/x86_64/LibreOffice_${LIBREOFFICE_VERSION}_Win_x86-64.msi"
+          get calibre.msi "https://github.com/kovidgoyal/calibre/releases/download/v$CALIBRE_VERSION/calibre-64bit-$CALIBRE_VERSION.msi"
+          ./lessmsi/lessmsi.exe x "$(cygpath -w "$PWD/libreoffice.msi")" "$(cygpath -w "$PWD/lo")\\" > /dev/null
+          ./lessmsi/lessmsi.exe x "$(cygpath -w "$PWD/calibre.msi")" "$(cygpath -w "$PWD/calibre")\\" > /dev/null
+          cp -r calibre/SourceDir/PFiles64/Calibre2 "$res/calibre"
+
+          # Fuera ayuda, diccionarios, galería, traducciones de la interfaz y temas de iconos:
+          # nada de eso hace falta para convertir y ocupa más de la mitad
+          python - lo/SourceDir "$res/libreoffice" <<'EOF'
+          import os, shutil, sys
+          source, target = sys.argv[1:3]
+          office = os.path.join(source, "LibreOffice")
+
+          def ignore(folder, names):
+              rel = os.path.relpath(folder, office).replace("\\", "/")
+              skip = {
+                  ".": {"help", "readmes", "CREDITS.fodt"},
+                  "share": {"extensions", "gallery"},
+              }.get(rel, set())
+              if rel == "program/resource":
+                  skip |= {n for n in names if n not in {"es", "en_US", "en_GB"}}
+              if rel == "share/config":
+                  skip |= {n for n in names if n.startswith("images_") and n != "images_colibre.zip"}
+              return skip
+
+          shutil.copytree(office, target, ignore=ignore)
+          fonts = os.path.join(target, "share", "fonts", "truetype")
+          os.makedirs(fonts, exist_ok=True)
+          for name in os.listdir(os.path.join(source, "Fonts")):
+              shutil.copy2(os.path.join(source, "Fonts", name), fonts)
+          # El runtime de Visual C++ que el MSI instalaría en el sistema
+          runtime = os.path.join(source, "System64")
+          for name in os.listdir(runtime):
+              if name.endswith(".dll"):
+                  shutil.copy2(os.path.join(runtime, name), os.path.join(target, "program"))
+          EOF
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npx --yes ${{ env.TAURI_CLI }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Swayfi ${{ github.ref_name }}
+          releaseDraft: true
+
+  # Solo Apple Silicon. Sin cuenta de desarrollador de Apple la app se firma "ad hoc" y
+  # cada usuario tiene que permitirla la primera vez (ver README)
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Descargar motores
+        run: |
+          set -euo pipefail
+          triple=aarch64-apple-darwin
+          bin="$PWD/src-tauri/binaries"
+          res="$bin/macos"
+          mkdir -p "$res/macos-libs" dl
+          cd dl
+          get() { curl -fsSL --retry 3 -o "$1" "$2"; }
+
+          get ffmpeg.zip https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip
+          unzip -q ffmpeg.zip
+          cp ffmpeg "$bin/ffmpeg-$triple"
+
+          get pandoc.zip "https://github.com/jgm/pandoc/releases/download/$PANDOC_VERSION/pandoc-$PANDOC_VERSION-arm64-macOS.zip"
+          unzip -q pandoc.zip
+          cp "pandoc-$PANDOC_VERSION-arm64/bin/pandoc" "$bin/pandoc-$triple"
+
+          get 7z.tar.xz "https://github.com/ip7z/7zip/releases/download/${SEVENZIP_VERSION:0:2}.${SEVENZIP_VERSION:2}/7z$SEVENZIP_VERSION-mac.tar.xz"
+          mkdir 7z
+          tar -xf 7z.tar.xz -C 7z
+          cp 7z/7zz "$bin/7z-$triple"
+
+          # vips y MuPDF no tienen versión autónoma para macOS: se toman de Homebrew y se
+          # empaquetan con todas sus librerías, incluidos los módulos de vips e ImageMagick
+          brew install vips mupdf-tools dylibbundler
+          cp "$(brew --prefix)/bin/vips" "$bin/vips-$triple"
+          cp "$(brew --prefix)/bin/mutool" "$bin/mutool-$triple"
+          mkdir -p "$res/vips/lib" "$res/imagemagick"
+          cp -R "$(brew --prefix vips)"/lib/vips-modules-* "$res/vips/lib/"
+          magick_modules=$(echo "$(brew --prefix imagemagick)"/lib/ImageMagick/modules-*)
+          cp -R "$magick_modules/coders" "$magick_modules/filters" "$res/imagemagick/"
+          cp -R "$(brew --prefix)/etc/ImageMagick-7" "$res/imagemagick/config"
+          chmod -R u+w "$bin"
+          targets=(-x "$bin/vips-$triple" -x "$bin/mutool-$triple")
+          while IFS= read -r -d '' module; do
+            targets+=(-x "$module")
+          done < <(find "$res/vips" "$res/imagemagick" \( -name '*.dylib' -o -name '*.so' \) -print0)
+          # Sin entrada: si le faltara una librería preguntaría por teclado y el trabajo se colgaría
+          dylibbundler -of -b -d "$res/macos-libs" -p @executable_path/../Resources/macos-libs/ \
+            -s "$(brew --prefix)/lib" "${targets[@]}" < /dev/null
+
+          # LibreOffice y Calibre ya vienen firmados por sus autores: se copian sin tocar
+          get libreoffice.dmg "https://download.documentfoundation.org/libreoffice/stable/$LIBREOFFICE_VERSION/mac/aarch64/LibreOffice_${LIBREOFFICE_VERSION}_MacOS_aarch64.dmg"
+          get calibre.dmg "https://github.com/kovidgoyal/calibre/releases/download/v$CALIBRE_VERSION/calibre-$CALIBRE_VERSION.dmg"
+          for app in libreoffice:LibreOffice calibre:calibre; do
+            image=${app%%:*}
+            yes | hdiutil attach -nobrowse -readonly -mountpoint "/Volumes/$image" "$image.dmg" > /dev/null
+            cp -R "/Volumes/$image/${app#*:}.app" "$res/"
+            hdiutil detach "/Volumes/$image"
+          done
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npx --yes ${{ env.TAURI_CLI }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Swayfi ${{ github.ref_name }}
+          releaseDraft: true
+
+  # En Linux los motores llegan como dependencias del paquete .deb (ver tauri.linux.conf.json)
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Dependencias de compilación
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npx --yes ${{ env.TAURI_CLI }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Swayfi ${{ github.ref_name }}
+          releaseDraft: true

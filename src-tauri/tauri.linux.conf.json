@@ -1,0 +1,21 @@
+{
+  "bundle": {
+    "targets": ["deb"],
+    "externalBin": [],
+    "linux": {
+      "deb": {
+        "depends": [
+          "ffmpeg",
+          "libvips-tools",
+          "pandoc",
+          "7zip | p7zip-full",
+          "mupdf-tools",
+          "libreoffice-writer-nogui",
+          "libreoffice-calc-nogui",
+          "libreoffice-impress-nogui",
+          "calibre"
+        ]
+      }
+    }
+  }
+}
