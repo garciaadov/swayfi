@@ -183,15 +183,20 @@ jobs:
           rm -rf dl
           df -h .
 
-      - uses: tauri-apps/tauri-action@v0
+      # tauri-action recorre todo el proyecto buscando su configuración y se queda sin memoria
+      # con los miles de archivos y enlaces de LibreOffice.app y calibre.app. La CLI de Tauri
+      # respeta el .gitignore y no entra en binaries/, así que se compila con ella directamente.
+      - name: Compilar y subir el instalador
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tauriScript: npx --yes ${{ env.TAURI_CLI }}
-          tagName: ${{ github.ref_name }}
-          releaseName: Swayfi ${{ github.ref_name }}
-          releaseDraft: true
-          assetNamePattern: Swayfi-macOS[ext]
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          (cd src-tauri && npx --yes "$TAURI_CLI" build)
+          cp src-tauri/target/release/bundle/dmg/*.dmg Swayfi-macOS.dmg
+          tag="$GITHUB_REF_NAME"
+          gh release view "$tag" > /dev/null 2>&1 ||
+            gh release create "$tag" --draft --title "Swayfi $tag" --notes ""
+          gh release upload "$tag" Swayfi-macOS.dmg --clobber
 
   # En Linux los motores llegan como dependencias del paquete .deb (ver tauri.linux.conf.json)
   linux:
