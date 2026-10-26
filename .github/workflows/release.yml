@@ -24,7 +24,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Descargar motores
@@ -112,13 +112,15 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
+          # Nombre fijo para que el botón del README apunte siempre a la última versión
+          releaseAssetNamePattern: Swayfi-Windows[setup][ext]
 
   # Solo Apple Silicon. Sin cuenta de desarrollador de Apple la app se firma "ad hoc" y
   # cada usuario tiene que permitirla la primera vez (ver README)
   macos:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Descargar motores
@@ -181,12 +183,13 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
+          releaseAssetNamePattern: Swayfi-macOS[ext]
 
   # En Linux los motores llegan como dependencias del paquete .deb (ver tauri.linux.conf.json)
   linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Dependencias de compilación
         run: |
@@ -200,3 +203,4 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: Swayfi ${{ github.ref_name }}
           releaseDraft: true
+          releaseAssetNamePattern: Swayfi-Linux[ext]

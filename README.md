@@ -2,6 +2,18 @@
 
 Conversor de archivos de escritorio. Arrastras un archivo, eliges el formato y listo: el resultado se guarda en tu carpeta **Descargas**.
 
+## Descargar
+
+[![Descargar para Windows](https://img.shields.io/badge/Descargar_para-Windows-0A78D8?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/garciaadov/swayfi/releases/latest/download/Swayfi-Windows-setup.exe)
+[![Descargar para macOS](https://img.shields.io/badge/Descargar_para-macOS-8B12F2?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/garciaadov/swayfi/releases/latest/download/Swayfi-macOS.dmg)
+[![Descargar para Linux](https://img.shields.io/badge/Descargar_para-Linux-0A3FE8?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/garciaadov/swayfi/releases/latest/download/Swayfi-Linux.deb)
+
+- **Windows 10 u 11:** abre el archivo descargado y sigue el instalador.
+- **macOS (Mac con chip M1 o posterior):** abre el `.dmg` y arrastra Swayfi a Aplicaciones. La primera vez hay que permitirla a mano: [mira cómo](#abrir-swayfi-en-macos-la-primera-vez).
+- **Linux (Ubuntu, Debian y derivados):** instala el `.deb` con `sudo apt install ./Swayfi-Linux.deb`.
+
+Más detalles en [Instalar](#instalar).
+
 - **100 % offline.** Nada se sube a internet; todo ocurre en tu ordenador.
 - **Sin límite de tamaño.** La interfaz solo maneja rutas; los motores leen y escriben en disco por partes.
 - **Sin instalar nada más.** Todos los motores de conversión van dentro del instalador.
@@ -28,9 +40,9 @@ Las fuentes (TTF, OTF, WOFF, WOFF2) llegarán en una segunda fase.
 
 Descarga el instalador de la última versión en la página de [Releases](../../releases).
 
-- **Windows 10 u 11:** `Swayfi_x.y.z_x64-setup.exe`. El instalador pesa unos 460 MB (unos 1,9 GB instalado) porque incluye LibreOffice y Calibre. Mientras no esté firmado, Windows mostrará el aviso de SmartScreen: pulsa «Más información» y «Ejecutar de todas formas».
-- **Linux (Debian, Ubuntu 22.04 o posterior):** `swayfi_x.y.z_amd64.deb`. Se instala con `sudo apt install ./swayfi_x.y.z_amd64.deb`, que trae los motores como dependencias del sistema.
-- **macOS 12 o posterior, Mac con Apple Silicon (M1 o posterior):** `Swayfi_x.y.z_aarch64.dmg`. Abre el `.dmg` y arrastra Swayfi a Aplicaciones. Mira la sección siguiente antes de abrirla por primera vez.
+- **Windows 10 u 11:** `Swayfi-Windows-setup.exe`. El instalador pesa unos 460 MB (unos 1,9 GB instalado) porque incluye LibreOffice y Calibre. Mientras no esté firmado, Windows mostrará el aviso de SmartScreen: pulsa «Más información» y «Ejecutar de todas formas».
+- **Linux (Debian, Ubuntu 22.04 o posterior):** `Swayfi-Linux.deb`. Se instala con `sudo apt install ./Swayfi-Linux.deb`, que trae los motores como dependencias del sistema.
+- **macOS 12 o posterior, Mac con Apple Silicon (M1 o posterior):** `Swayfi-macOS.dmg`. Abre el `.dmg` y arrastra Swayfi a Aplicaciones. Mira la sección siguiente antes de abrirla por primera vez.
 
 ### Abrir Swayfi en macOS la primera vez
 
